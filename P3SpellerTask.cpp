@@ -552,7 +552,7 @@ P3SpellerTask::OnSequenceBegin()
     Display().ObjectsClicked().pop();
   }
 */
-
+/*
    for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
       {
         TextStimulus* p = dynamic_cast<TextStimulus*>( *i );
@@ -564,7 +564,7 @@ P3SpellerTask::OnSequenceBegin()
 			p->SetColor( RGBColor::NullColor );
       }
 
-
+*/
   }
 
 }
