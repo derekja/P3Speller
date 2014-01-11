@@ -68,6 +68,7 @@ P3SpellerTask::P3SpellerTask()
   mNumSelections( 0 ),
   mSleepDuration( 0 ),
   mTargetRow( 0 ),
+  mOrigNumberOfSequences( 0 ),
   mTargetCol( 0 ),
   mFirstSequence( true ),
   mInfo("MyEventStream_bci2k","Markers",1,lsl::IRREGULAR_RATE,lsl::cf_string,"myuniquesourceid23445"),
@@ -336,6 +337,7 @@ P3SpellerTask::OnInitialize( const SignalProperties& /*Input*/ )
   InitSequence();
 
   mNumberOfSequences = Parameter( "NumberOfSequences" );
+  mOrigNumberOfSequences = mNumberOfSequences;
   mDisplayResults = ( Parameter( "DisplayResults" ) != 0 );
   mTestMode = ( Parameter( "TestMode" ) != 0 );
   mInterpretMode_ = Parameter( "InterpretMode" );
@@ -518,7 +520,11 @@ P3SpellerTask::OnSequenceBegin()
   State( "SelectedColumn" ) = 0;
   State( "SelectedTarget" ) = 0;
 
-  // before each sequence, find the next letter to be spelled (mEntryText
+	// set the number of sequences for this round
+    mNumberOfSequences = mOrigNumberOfSequences + 5 - (rand() % 10);
+
+
+  // before each sequence, find the next letter to be spelled (mEntryText)
   if( mInterpretMode_ == InterpretModes::Copy ) {
 	SpellerTarget* pSuggestedTarget = NULL;
     SequenceOfSpellerTargets currentlySpelled,
@@ -528,11 +534,37 @@ P3SpellerTask::OnSequenceBegin()
 	if( toBeSpelled.size() > currentlySpelled.size() )
 		pSuggestedTarget = toBeSpelled[ currentlySpelled.size() ];
 	mEntryText = pSuggestedTarget->EntryText();
+
+	
+// set the target row and col to be looked for to send lsl events
   int targetID = pSuggestedTarget ? pSuggestedTarget->Tag() : 0;
   mTargetRow    = targetID ? ( targetID - 1 ) / mNumMatrixCols + 1 : 0;
   mTargetCol = targetID ? ( targetID - 1 ) % mNumMatrixCols + 1 : 0;
 
-  
+  // look through the mStimuli set to find the stimuli object for the current target
+ Stimulus* pTargetStimulus = NULL;
+
+ /* while( !Display().ObjectsClicked().empty() )
+  {
+    Stimulus* pStimulus = dynamic_cast<Stimulus*>( Display().ObjectsClicked().front() );
+    if( pStimulus != NULL )
+      pClickedStimulus = pStimulus;
+    Display().ObjectsClicked().pop();
+  }
+*/
+
+   for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
+      {
+        TextStimulus* p = dynamic_cast<TextStimulus*>( *i );
+		std::string t = p->Text();
+		if( p->Text() == mEntryText ) {
+          p->SetColor( RGBColor(255,0,0));
+		}
+		else
+			p->SetColor( RGBColor::NullColor );
+      }
+
+
   }
 
 }
@@ -624,6 +656,9 @@ P3SpellerTask::OnNextStimulusCode()
 			 << result
 			 << "         mrk: "
 			 << mMarker
+ 			 << "         mNumOfSeq: "
+			 << mNumberOfSequences
+
 			<< endl;
 	  }
   }

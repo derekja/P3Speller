@@ -115,6 +115,7 @@ class P3SpellerTask : public StimulusTask, public Speller
   int mTargetRow, mTargetCol;
   std::string mEntryText;
   std::string mMarker;
+  int mOrigNumberOfSequences;
 
   // Properties of the current menu.
   int mCurMenu;
