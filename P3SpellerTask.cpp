@@ -40,6 +40,7 @@
 
 #include "Localization.h"
 #include "FileUtils.h"
+#include "OSThread.h"
 #include <algorithm>
 #include <iomanip>
 
@@ -70,6 +71,8 @@ P3SpellerTask::P3SpellerTask()
   mTargetRow( 0 ),
   mOrigNumberOfSequences( 0 ),
   mTargetCol( 0 ),
+  mTargetHeight( 0 ),
+  mTargetWidth( 0 ),
   mFirstSequence( true ),
   mInfo("MyEventStream_bci2k","Markers",1,lsl::IRREGULAR_RATE,lsl::cf_string,"myuniquesourceid23445"),
   mStreamOutlet(mInfo, 0, 360)
@@ -403,6 +406,8 @@ P3SpellerTask::OnStartRun()
   DetermineAttendedTarget();
   DisplayMessage( LocalizableString( "Waiting to start ..." ) );
 
+ 
+
   mNumSelections = 0;
   mSleepDuration = 0;
   mSleepMode = dontSleep;
@@ -472,6 +477,7 @@ P3SpellerTask::OnStartRun()
                  << MenuCols( i ) << '\n';
 
   mSelectionSummary.str() = "Selections in this run:\n";
+
 }
 
 void
@@ -544,6 +550,12 @@ P3SpellerTask::OnSequenceBegin()
   // look through the mStimuli set to find the stimuli object for the current target
  Stimulus* pTargetStimulus = NULL;
 
+OnPause();
+DisplayMessage("testing");
+Sleep(2000);
+DisplayMessage("");
+OnPause();
+
  /* while( !Display().ObjectsClicked().empty() )
   {
     Stimulus* pStimulus = dynamic_cast<Stimulus*>( Display().ObjectsClicked().front() );
@@ -552,23 +564,60 @@ P3SpellerTask::OnSequenceBegin()
     Display().ObjectsClicked().pop();
   }
 */
-/*
+
    for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
       {
+	    SetOfStimuli* ss = dynamic_cast<SetOfStimuli*>( *i );
+		ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
         TextStimulus* p = dynamic_cast<TextStimulus*>( *i );
+		ImageStimulus* pIcon = new ImageStimulus( Display() );
+
+		if (ims != NULL) {
+			        ims->SetFile( "images\\redback.gif" );
+		}
+
+		if (p != NULL) {
 		std::string t = p->Text();
 		if( p->Text() == mEntryText ) {
-          p->SetColor( RGBColor(255,0,0));
-		}
-		else
-			p->SetColor( RGBColor::NullColor );
-      }
+			p->SetText("@");
 
-*/
+ /* GUI::Rect targetRect =
+    {
+      mMatrixRect.left + mTargetCol * mTargetWidth,
+      mMatrixRect.top  + mTargetRow * mTargetHeight,
+      mMatrixRect.left + ( mTargetCol + 1 ) * mTargetWidth,
+      mMatrixRect.top  + ( mTargetRow + 1 ) * mTargetHeight
+    };*/
+//              .SetRenderingMode( GUI::RenderingMode::Transparent )
+//              .SetObjectRect( mMatrixRect );
+//        pIcon->SetPresentationMode( VisualStimulus::Mode( 1 ) )
+//              .SetDimFactor( 1.0 / .5 );
+        //mStimuli.insert( pIcon );
+		}
+   }
+   }
   }
 
 }
+/*
+void P3SpellerTask::OnPreRun()
+{
+	int i = 2000;
+	DisplayMessage( LocalizableString( "Waiting to start ..." ) );
+	Sleep(i);
 
+}
+*/
+void
+P3SpellerTask::DoPreRun( const GenericSignal&, bool& /*doProgress*/ )
+{
+  //DisplayMessage("prerunhit");
+OnPause();
+//Sleep(20000);
+//MessageBox(0,"test","test",0);
+OnPause();
+
+}
 void
 P3SpellerTask::OnPostRun()
 {
@@ -1261,6 +1310,7 @@ P3SpellerTask::LoadMenu( int                inMenuIdx,
       ioAssociations[ numMatrixRows + col ].Add( pStimulus );
     }
   }
+
 }
 
 bool

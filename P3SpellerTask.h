@@ -55,6 +55,8 @@ class P3SpellerTask : public StimulusTask, public Speller
   virtual void    DoPreSequence( const GenericSignal&, bool& doProgress );
   virtual void    OnSequenceBegin();
   virtual void	  OnStimulusBegin( int stimulusCode );
+ // virtual void    OnPreRun();
+  virtual void    DoPreRun( const GenericSignal&, bool& doProgress );
   virtual void    OnPostRun();
   virtual void    DoPostSequence( const GenericSignal&, bool& doProgress );
   virtual Target* OnClassResult( const ClassResult& );
@@ -116,6 +118,7 @@ class P3SpellerTask : public StimulusTask, public Speller
   std::string mEntryText;
   std::string mMarker;
   int mOrigNumberOfSequences;
+  float mTargetWidth, mTargetHeight;
 
   // Properties of the current menu.
   int mCurMenu;
