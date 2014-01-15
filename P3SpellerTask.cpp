@@ -546,7 +546,7 @@ P3SpellerTask::OnSequenceBegin()
 				if (ims != NULL) {
 					// as we clear each card, store the associated image file indexed by it's tag
 
-							mAsocFile[ims->Tag()].Tag = ims->Tag();
+							mAsocFile[ims->Tag()].Tag = 0;
 							mAsocFile[ims->Tag()].Name = ims->File();
 							ims->SetFile( "images\\redback.gif" );
 							ims->SetDimFactor(2);
@@ -626,11 +626,11 @@ OnPause();
   }
 
 }
-void
-P3SpellerTask::DoPreRun( const GenericSignal&, bool& /*doProgress*/ )
-{
+//void
+//P3SpellerTask::DoPreRun( const GenericSignal&, bool& /*doProgress*/ )
+//{
 
-}
+//}
 void
 P3SpellerTask::OnPostRun()
 {
@@ -639,12 +639,12 @@ P3SpellerTask::OnPostRun()
   State( "SelectedTarget" ) = 0;
 }
 
-void
-P3SpellerTask::OnStimulusBegin( int inStimulusCode )
-{
-  Associations()[ inStimulusCode ].Present();
-  mStreamOutlet.push_sample(&mMarker);
-}
+//void
+//P3SpellerTask::OnStimulusBegin( int inStimulusCode )
+//{
+//  Associations()[ inStimulusCode ].Present();
+//  mStreamOutlet.push_sample(&mMarker);
+//}
 int
 P3SpellerTask::OnNextStimulusCode()
 {
@@ -775,6 +775,8 @@ P3SpellerTask::OnClassResult( const ClassResult& inResult )
                 << "\n";
   }
 
+  // variable to hold whether we need to flip everything back
+    bool fnd = false;
   // if firstresult then flip card up appropriately
   if (mFirstMatch == 0) {
 	  mFirstMatch = 1;
@@ -784,13 +786,66 @@ P3SpellerTask::OnClassResult( const ClassResult& inResult )
 				if (ims != NULL) {
 					// if the tags match, flip the card up
 					if (pTarget->Tag()==ims->Tag()) {
+						if (mAsocFile[ims->Tag()].Tag == 2) {
+							DisplayMessage("already matched!");
+							mFirstMatch = 0;
+						}
+						else {
 							ims->SetFile( mAsocFile[ims->Tag()].Name );
+							mAsocFile[ims->Tag()].Tag = 1;
+						}
 					}
 				}
 		}
   }
   else if (mFirstMatch == 1) {
   mFirstMatch = 0;
+    for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
+			  {
+				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
+				if (ims != NULL) {
+					// if the tags match, flip the card up
+					if (pTarget->Tag()==ims->Tag()) {
+						if (mAsocFile[ims->Tag()].Tag == 2) {
+							DisplayMessage("already matched!");
+						}
+						else if (mAsocFile[ims->Tag()].Tag == 1) {
+							DisplayMessage("you just chose that!");
+							// will depend on unflip loop at end to do this
+							//ims->SetFile( "images\\redback.gif" );
+							//mAsocFile[ims->Tag()].Tag = 0;
+						}
+						else {
+							for (int j=1;j<90;j++) {
+								if (mAsocFile[j].Name == mAsocFile[ims->Tag()].Name) {
+									if (mAsocFile[j].Tag == 1) {
+										DisplayMessage("Good match!");
+										ims->SetFile( mAsocFile[ims->Tag()].Name );
+										mAsocFile[ims->Tag()].Tag = 2;
+										mAsocFile[j].Tag = 2;
+										fnd = true;
+									}
+								}
+							}
+						}
+						// found our match, break out of iterator
+						break;
+					}
+				}
+	}
+// flip all cards that aren't already matched back over, set any 1's in the mAsocFile back to zero
+    for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
+			  {
+				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
+				if (ims != NULL) {
+					if (mAsocFile[ims->Tag()].Tag == 1) {
+						ims->SetFile( "images\\redback.gif" );
+						mAsocFile[ims->Tag()].Tag = 0;
+					}
+				}
+	}
+
+
   }
   return pTarget;
 	}

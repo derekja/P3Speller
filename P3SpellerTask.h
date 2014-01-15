@@ -54,9 +54,9 @@ class P3SpellerTask : public StimulusTask, public Speller
   virtual void    OnPreSequence();
   virtual void    DoPreSequence( const GenericSignal&, bool& doProgress );
   virtual void    OnSequenceBegin();
-  virtual void	  OnStimulusBegin( int stimulusCode );
+ // virtual void	  OnStimulusBegin( int stimulusCode );
  // virtual void    OnPreRun();
-  virtual void    DoPreRun( const GenericSignal&, bool& doProgress );
+ // virtual void    DoPreRun( const GenericSignal&, bool& doProgress );
   virtual void    OnPostRun();
   virtual void    DoPostSequence( const GenericSignal&, bool& doProgress );
   virtual Target* OnClassResult( const ClassResult& );
