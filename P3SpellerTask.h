@@ -114,11 +114,18 @@ class P3SpellerTask : public StimulusTask, public Speller
   lsl::stream_info mInfo;
   lsl::stream_outlet mStreamOutlet;	// our stream outlet
   bool mFirstSequence;
+  int mFirstMatch;
   int mTargetRow, mTargetCol;
   std::string mEntryText;
   std::string mMarker;
   int mOrigNumberOfSequences;
   float mTargetWidth, mTargetHeight;
+
+  struct AsocFile {
+	  int Tag;
+	  std::string Name;
+  };
+  AsocFile mAsocFile[90];
 
   // Properties of the current menu.
   int mCurMenu;

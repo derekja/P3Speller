@@ -74,6 +74,7 @@ P3SpellerTask::P3SpellerTask()
   mTargetHeight( 0 ),
   mTargetWidth( 0 ),
   mFirstSequence( true ),
+  mFirstMatch( 0 ),
   mInfo("MyEventStream_bci2k","Markers",1,lsl::IRREGULAR_RATE,lsl::cf_string,"myuniquesourceid23445"),
   mStreamOutlet(mInfo, 0, 360)
 {
@@ -398,13 +399,14 @@ P3SpellerTask::OnInitialize( const SignalProperties& /*Input*/ )
 void
 P3SpellerTask::OnStartRun()
 {
+	mFirstSequence = true;
   // Non-summary file
   Display().ClearClicks();
   if( mInterpretMode_ == InterpretModes::Copy )
     ClearTextHistory();
   InitSequence();
   DetermineAttendedTarget();
-  DisplayMessage( LocalizableString( "Waiting to start ..." ) );
+  DisplayMessage( LocalizableString( "Memorize the cards ..." ) );
 
  
 
@@ -527,9 +529,33 @@ P3SpellerTask::OnSequenceBegin()
   State( "SelectedTarget" ) = 0;
 
 	// set the number of sequences for this round
-    mNumberOfSequences = mOrigNumberOfSequences + 5 - (rand() % 10);
+    //mNumberOfSequences = mOrigNumberOfSequences + 5 - (rand() % 10);
 
+  // game mode is overriding free
+    if( mInterpretMode_ == InterpretModes::Free ) {
+		if (!mFirstSequence && (mFirstMatch==-1)) {
+			//OnPause();
+			//Sleep(10000);
+			//DisplayMessage("");
+			//OnPause();
+			// set mFirstMatch to 0 to indicate that the deck is cleared
+			mFirstMatch = 0;
+			   for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
+			  {
+				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
+				if (ims != NULL) {
+					// as we clear each card, store the associated image file indexed by it's tag
 
+							mAsocFile[ims->Tag()].Tag = ims->Tag();
+							mAsocFile[ims->Tag()].Name = ims->File();
+							ims->SetFile( "images\\redback.gif" );
+							ims->SetDimFactor(2);
+				}
+			   }
+		}
+	}
+
+  // following is all obsoleted by being hidden behind the copy mode
   // before each sequence, find the next letter to be spelled (mEntryText)
   if( mInterpretMode_ == InterpretModes::Copy ) {
 	SpellerTarget* pSuggestedTarget = NULL;
@@ -574,6 +600,7 @@ OnPause();
 
 		if (ims != NULL) {
 			        ims->SetFile( "images\\redback.gif" );
+
 		}
 
 		if (p != NULL) {
@@ -599,23 +626,9 @@ OnPause();
   }
 
 }
-/*
-void P3SpellerTask::OnPreRun()
-{
-	int i = 2000;
-	DisplayMessage( LocalizableString( "Waiting to start ..." ) );
-	Sleep(i);
-
-}
-*/
 void
 P3SpellerTask::DoPreRun( const GenericSignal&, bool& /*doProgress*/ )
 {
-  //DisplayMessage("prerunhit");
-OnPause();
-//Sleep(20000);
-//MessageBox(0,"test","test",0);
-OnPause();
 
 }
 void
@@ -640,9 +653,6 @@ P3SpellerTask::OnNextStimulusCode()
   //  A null sequence (no nonzero stimulus codes between two zero codes) ends
   //  the run.
   int result = 0;
-  bool outputMarker = false;
-
-  outputMarker = !mFirstSequence;
   if( !mSequence.empty() )
   {
     if( mSequencePos == mSequence.end() )
@@ -665,52 +675,18 @@ P3SpellerTask::OnNextStimulusCode()
       {
         result = 0;
         mSequenceCount = 0;
-		mFirstSequence = true;
-		outputMarker = false;
       }
       else
       {
         result = *mSequencePos++;
-		mFirstSequence = false;
       }
     }
     else
     {
       result = *mSequencePos++;
-	  mFirstSequence = false;
     }
   }
 
-  // here want access to copy text to be spelled (in terms of which two sequence positions it occupies, send target/non-target on that basis
-
-  if (outputMarker) {
- 
-	  if( mInterpretMode_ == InterpretModes::Copy ) {
-		  
-		  const char *Markertypes[] = {"start", "target", "non-target"};
-
-  mMarker = "xx";
-
-  if ((result==(mTargetRow)) || (result==(mTargetCol+mNumMatrixCols))) {
-		  mMarker = Markertypes[1];
-  }
-  else {
-	  mMarker = Markertypes[2];
-  }
-
-		  //mStreamOutlet.push_sample(&mMarker);
-
-
-		   AppLog << "mSequencePos: "
-			 << result
-			 << "         mrk: "
-			 << mMarker
- 			 << "         mNumOfSeq: "
-			 << mNumberOfSequences
-
-			<< endl;
-	  }
-  }
 
   return result;
 }
@@ -724,6 +700,19 @@ P3SpellerTask::DoPostSequence( const GenericSignal&, bool& /*doProgress*/ )
 Target*
 P3SpellerTask::OnClassResult( const ClassResult& inResult )
 {
+
+	// if we get a result back we're no longer on the first sequence (which is used for memorization time)
+	if (mFirstSequence) {
+		mFirstSequence = false;
+		DisplayMessage("match!");
+		mFirstMatch = -1;
+		Target* pTarget = NULL;
+		return( pTarget );
+	}
+	else {
+
+
+
   // We override the standard ClassResult handler
   // - to additionally provide the SelectedTarget, SelectedRow, SelectedColumn
   //   states,
@@ -785,7 +774,26 @@ P3SpellerTask::OnClassResult( const ClassResult& inResult )
                 << setprecision( 2 ) << fixed << mean
                 << "\n";
   }
+
+  // if firstresult then flip card up appropriately
+  if (mFirstMatch == 0) {
+	  mFirstMatch = 1;
+    for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
+			  {
+				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
+				if (ims != NULL) {
+					// if the tags match, flip the card up
+					if (pTarget->Tag()==ims->Tag()) {
+							ims->SetFile( mAsocFile[ims->Tag()].Name );
+					}
+				}
+		}
+  }
+  else if (mFirstMatch == 1) {
+  mFirstMatch = 0;
+  }
   return pTarget;
+	}
 }
 
 // Speller events.
@@ -1175,7 +1183,8 @@ P3SpellerTask::LoadMenu( int                inMenuIdx,
   float iconHighlightFactor = MenuParam( "IconHighlightFactor", inMenuIdx );
   int numMenus = NumMenus(),
       numMatrixRows = MenuRows( inMenuIdx ),
-      numMatrixCols = MenuCols( inMenuIdx );
+      numMatrixCols = MenuCols( inMenuIdx ),
+	  IconTag = 1;
 
   ParamRef TargetDefinitions = MultipleMenus() ?
                                 Parameter( "TargetDefinitions" )( inMenuIdx, 0 ) :
@@ -1268,6 +1277,8 @@ P3SpellerTask::LoadMenu( int                inMenuIdx,
               .SetObjectRect( targetRect );
         pIcon->SetPresentationMode( VisualStimulus::Mode( iconHighlightMode ) )
               .SetDimFactor( 1.0 / iconHighlightFactor );
+		pIcon->SetTag( IconTag );
+		IconTag++;
         ioStimuli.insert( pIcon );
         rowSet.Add( pIcon );
         colSet.Add( pIcon );
