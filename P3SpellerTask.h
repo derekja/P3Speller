@@ -123,6 +123,7 @@ class P3SpellerTask : public StimulusTask, public Speller
 
   struct AsocFile {
 	  int Tag;
+	  bool Ran;
 	  std::string Name;
   };
   AsocFile mAsocFile[90];

@@ -456,10 +456,45 @@ P3SpellerTask::OnStartRun()
   }
 
   ++mRunCount;
-  if( mInterpretMode_ == InterpretModes::Free )
-  {
+  if( mInterpretMode_ == InterpretModes::Free ) {
     AppLog << "Start of run " << mRunCount << " in online (free) mode\n";
     mSummaryFile << "*** START OF RUN " << mRunCount << " IN ONLINE MODE ***\n";
+	//randomize the cards each run
+		for( int i = 0; i < 90; ++i )	  {
+			    // if we haven't randomized this node yet
+				if (mAsocFile[i].Name != "") {
+					// we're iterating through again, while all the cards are turned, to randomize the cards
+
+							if (mAsocFile[i].Ran == false) 
+							{
+								int max = mNumMatrixRows * mNumMatrixCols;
+								int attempts = 0;
+								while (mAsocFile[i].Ran == false) {
+									attempts++;
+									int rnd = rand( ) % max;
+									if (mAsocFile[rnd].Name != "") {
+										if (mAsocFile[rnd].Ran == false) {
+											AsocFile tmpAsoc;
+											tmpAsoc.Name = mAsocFile[i].Name;
+											tmpAsoc.Tag = mAsocFile[i].Tag;
+											tmpAsoc.Ran = mAsocFile[i].Ran;
+											mAsocFile[i].Name = mAsocFile[rnd].Name;
+											mAsocFile[i].Tag = mAsocFile[rnd].Tag;
+											mAsocFile[i].Ran = true;
+											mAsocFile[rnd].Name = mAsocFile[rnd].Name;
+											mAsocFile[rnd].Tag = mAsocFile[rnd].Tag;
+											mAsocFile[rnd].Ran = true;
+											break;
+										}
+									}
+									if (attempts > (max*2)) {
+										break;
+									}
+								}
+							}
+				}
+				
+		}
   }
   else
   {
@@ -547,6 +582,7 @@ P3SpellerTask::OnSequenceBegin()
 					// as we clear each card, store the associated image file indexed by it's tag
 
 							mAsocFile[ims->Tag()].Tag = 0;
+							mAsocFile[ims->Tag()].Ran = false;
 							mAsocFile[ims->Tag()].Name = ims->File();
 							ims->SetFile( "images\\redback.gif" );
 							ims->SetDimFactor(2);
@@ -554,77 +590,6 @@ P3SpellerTask::OnSequenceBegin()
 			   }
 		}
 	}
-
-  // following is all obsoleted by being hidden behind the copy mode
-  // before each sequence, find the next letter to be spelled (mEntryText)
-  if( mInterpretMode_ == InterpretModes::Copy ) {
-	SpellerTarget* pSuggestedTarget = NULL;
-    SequenceOfSpellerTargets currentlySpelled,
-	                     toBeSpelled;
-	Speller::TrySpelling( mTextHistory.top(), &currentlySpelled );
-	Speller::TrySpelling( mTextToSpell, &toBeSpelled );
-	if( toBeSpelled.size() > currentlySpelled.size() )
-		pSuggestedTarget = toBeSpelled[ currentlySpelled.size() ];
-	mEntryText = pSuggestedTarget->EntryText();
-
-	
-// set the target row and col to be looked for to send lsl events
-  int targetID = pSuggestedTarget ? pSuggestedTarget->Tag() : 0;
-  mTargetRow    = targetID ? ( targetID - 1 ) / mNumMatrixCols + 1 : 0;
-  mTargetCol = targetID ? ( targetID - 1 ) % mNumMatrixCols + 1 : 0;
-
-  // look through the mStimuli set to find the stimuli object for the current target
- Stimulus* pTargetStimulus = NULL;
-
-OnPause();
-DisplayMessage("testing");
-Sleep(2000);
-DisplayMessage("");
-OnPause();
-
- /* while( !Display().ObjectsClicked().empty() )
-  {
-    Stimulus* pStimulus = dynamic_cast<Stimulus*>( Display().ObjectsClicked().front() );
-    if( pStimulus != NULL )
-      pClickedStimulus = pStimulus;
-    Display().ObjectsClicked().pop();
-  }
-*/
-
-   for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
-      {
-	    SetOfStimuli* ss = dynamic_cast<SetOfStimuli*>( *i );
-		ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
-        TextStimulus* p = dynamic_cast<TextStimulus*>( *i );
-		ImageStimulus* pIcon = new ImageStimulus( Display() );
-
-		if (ims != NULL) {
-			        ims->SetFile( "images\\redback.gif" );
-
-		}
-
-		if (p != NULL) {
-		std::string t = p->Text();
-		if( p->Text() == mEntryText ) {
-			p->SetText("@");
-
- /* GUI::Rect targetRect =
-    {
-      mMatrixRect.left + mTargetCol * mTargetWidth,
-      mMatrixRect.top  + mTargetRow * mTargetHeight,
-      mMatrixRect.left + ( mTargetCol + 1 ) * mTargetWidth,
-      mMatrixRect.top  + ( mTargetRow + 1 ) * mTargetHeight
-    };*/
-//              .SetRenderingMode( GUI::RenderingMode::Transparent )
-//              .SetObjectRect( mMatrixRect );
-//        pIcon->SetPresentationMode( VisualStimulus::Mode( 1 ) )
-//              .SetDimFactor( 1.0 / .5 );
-        //mStimuli.insert( pIcon );
-		}
-   }
-   }
-  }
-
 }
 //void
 //P3SpellerTask::DoPreRun( const GenericSignal&, bool& /*doProgress*/ )
@@ -643,7 +608,7 @@ void
 P3SpellerTask::OnStimulusBegin( int inStimulusCode )
 {
   Associations()[ inStimulusCode ].Present();
-  //mStreamOutlet.push_sample(&mMarker);
+  mStreamOutlet.push_sample(&mMarker);
 }
 int
 P3SpellerTask::OnNextStimulusCode()
