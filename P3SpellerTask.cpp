@@ -639,12 +639,12 @@ P3SpellerTask::OnPostRun()
   State( "SelectedTarget" ) = 0;
 }
 
-//void
-//P3SpellerTask::OnStimulusBegin( int inStimulusCode )
-//{
-//  Associations()[ inStimulusCode ].Present();
-//  mStreamOutlet.push_sample(&mMarker);
-//}
+void
+P3SpellerTask::OnStimulusBegin( int inStimulusCode )
+{
+  Associations()[ inStimulusCode ].Present();
+  //mStreamOutlet.push_sample(&mMarker);
+}
 int
 P3SpellerTask::OnNextStimulusCode()
 {
@@ -1274,8 +1274,13 @@ P3SpellerTask::LoadMenu( int                inMenuIdx,
   {
     int targetCol = i % numMatrixCols,
         targetRow = i / numMatrixCols;
-    Association& rowSet = ioAssociations[ targetRow + 1 ],
-               & colSet = ioAssociations[ numMatrixRows + targetCol + 1 ];
+//failed, just on diagonals: int targetCol = i, targetRow = i;
+
+  /*  Association& rowSet = ioAssociations[ targetRow + 1 ],
+               & colSet = ioAssociations[ numMatrixRows + targetCol + 1 ]; */
+ Association& rowSet = ioAssociations[ i + 1 ],
+               & colSet = ioAssociations[ i + 1 ];
+
 
     string entryText = TargetDefinitions( i, Enter );
     { // Check for legal entry text
