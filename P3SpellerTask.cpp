@@ -459,42 +459,7 @@ P3SpellerTask::OnStartRun()
   if( mInterpretMode_ == InterpretModes::Free ) {
     AppLog << "Start of run " << mRunCount << " in online (free) mode\n";
     mSummaryFile << "*** START OF RUN " << mRunCount << " IN ONLINE MODE ***\n";
-	//randomize the cards each run
-		for( int i = 0; i < 90; ++i )	  {
-			    // if we haven't randomized this node yet
-				if (mAsocFile[i].Name != "") {
-					// we're iterating through again, while all the cards are turned, to randomize the cards
 
-							if (mAsocFile[i].Ran == false) 
-							{
-								int max = mNumMatrixRows * mNumMatrixCols;
-								int attempts = 0;
-								while (mAsocFile[i].Ran == false) {
-									attempts++;
-									int rnd = rand( ) % max;
-									if (mAsocFile[rnd].Name != "") {
-										if (mAsocFile[rnd].Ran == false) {
-											AsocFile tmpAsoc;
-											tmpAsoc.Name = mAsocFile[i].Name;
-											tmpAsoc.Tag = mAsocFile[i].Tag;
-											tmpAsoc.Ran = mAsocFile[i].Ran;
-											mAsocFile[i].Name = mAsocFile[rnd].Name;
-											mAsocFile[i].Tag = mAsocFile[rnd].Tag;
-											mAsocFile[i].Ran = true;
-											mAsocFile[rnd].Name = mAsocFile[rnd].Name;
-											mAsocFile[rnd].Tag = mAsocFile[rnd].Tag;
-											mAsocFile[rnd].Ran = true;
-											break;
-										}
-									}
-									if (attempts > (max*2)) {
-										break;
-									}
-								}
-							}
-				}
-				
-		}
   }
   else
   {
@@ -568,6 +533,65 @@ P3SpellerTask::OnSequenceBegin()
 
   // game mode is overriding free
     if( mInterpretMode_ == InterpretModes::Free ) {
+		if (mFirstSequence) {
+			// load initial card values into mAsocFile
+						   for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
+			  {
+				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
+				if (ims != NULL) {
+					// as we clear each card, store the associated image file indexed by it's tag
+
+							mAsocFile[ims->Tag()].Tag = 0;
+							mAsocFile[ims->Tag()].Ran = false;
+							mAsocFile[ims->Tag()].Name = ims->File();
+				}
+			   }
+	//randomize the cards each run
+		for( int i = 1; i < 90; ++i )	  {
+			    // if we haven't randomized this node yet
+				if (mAsocFile[i].Name != "") {
+					// we're iterating through again, while all the cards are turned, to randomize the cards
+
+							if (mAsocFile[i].Ran == false) 
+							{
+								int max = mNumMatrixRows * mNumMatrixCols;
+								int attempts = 0;
+								while (mAsocFile[i].Ran == false) {
+									attempts++;
+									int rnd = rand( ) % max+1;
+									if (mAsocFile[rnd].Name != "") {
+										if (mAsocFile[rnd].Ran == false) {
+											AsocFile tmpAsoc;
+											tmpAsoc.Name = mAsocFile[i].Name;
+											tmpAsoc.Tag = mAsocFile[i].Tag;
+											tmpAsoc.Ran = mAsocFile[i].Ran;
+											mAsocFile[i].Name = mAsocFile[rnd].Name;
+											mAsocFile[i].Tag = mAsocFile[rnd].Tag;
+											mAsocFile[i].Ran = true;
+											mAsocFile[rnd].Name = tmpAsoc.Name;
+											mAsocFile[rnd].Tag = tmpAsoc.Tag;
+											mAsocFile[rnd].Ran = true;
+											break;
+										}
+									}
+									if (attempts > (max*2)) {
+										break;
+									}
+								}
+							}
+				}
+				
+		}
+		// put them back into their correct order now
+					   for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
+			  {
+				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
+				if (ims != NULL) {
+							ims->SetFile( mAsocFile[ims->Tag()].Name );
+							
+				}
+			   }
+		}
 		if (!mFirstSequence && (mFirstMatch==-1)) {
 			//OnPause();
 			//Sleep(10000);
