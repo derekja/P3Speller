@@ -36,11 +36,9 @@
 #include "SoundStimulus.h"
 #include "SpeechStimulus.h"
 #include "AudioSpellerTarget.h"
-#include "lsl_cpp.h"
 
 #include "Localization.h"
 #include "FileUtils.h"
-#include "OSThread.h"
 #include <algorithm>
 #include <iomanip>
 
@@ -67,16 +65,7 @@ P3SpellerTask::P3SpellerTask()
   mSummaryFile( SummaryFileExtension().c_str() ),
   mRunCount( 0 ),
   mNumSelections( 0 ),
-  mSleepDuration( 0 ),
-  mTargetRow( 0 ),
-  mOrigNumberOfSequences( 0 ),
-  mTargetCol( 0 ),
-  mTargetHeight( 0 ),
-  mTargetWidth( 0 ),
-  mFirstSequence( true ),
-  mFirstMatch( 0 ),
-  mInfo("MyEventStream_bci2k","Markers",1,lsl::IRREGULAR_RATE,lsl::cf_string,"myuniquesourceid23445"),
-  mStreamOutlet(mInfo, 0, 360)
+  mSleepDuration( 0 )
 {
  BEGIN_PARAMETER_DEFINITIONS
    "Application:Sequencing int NumberOfSequences= 15 15 1 % // "
@@ -341,7 +330,6 @@ P3SpellerTask::OnInitialize( const SignalProperties& /*Input*/ )
   InitSequence();
 
   mNumberOfSequences = Parameter( "NumberOfSequences" );
-  mOrigNumberOfSequences = mNumberOfSequences;
   mDisplayResults = ( Parameter( "DisplayResults" ) != 0 );
   mTestMode = ( Parameter( "TestMode" ) != 0 );
   mInterpretMode_ = Parameter( "InterpretMode" );
@@ -373,14 +361,6 @@ P3SpellerTask::OnInitialize( const SignalProperties& /*Input*/ )
                  .Show();
   }
 
-	  const char *Markertypes[] = {"start", "target", "non-target"};
-	  
-	  string mrk = Markertypes[0];
-
-	  mStreamOutlet.push_sample(&mrk);
-
-
-
   // UDP connection
   mConnection.close();
   mConnection.clear();
@@ -399,16 +379,13 @@ P3SpellerTask::OnInitialize( const SignalProperties& /*Input*/ )
 void
 P3SpellerTask::OnStartRun()
 {
-	mFirstSequence = true;
   // Non-summary file
   Display().ClearClicks();
   if( mInterpretMode_ == InterpretModes::Copy )
     ClearTextHistory();
   InitSequence();
   DetermineAttendedTarget();
-  DisplayMessage( LocalizableString( "Memorize the cards ..." ) );
-
- 
+  DisplayMessage( LocalizableString( "Waiting to start ..." ) );
 
   mNumSelections = 0;
   mSleepDuration = 0;
@@ -456,10 +433,10 @@ P3SpellerTask::OnStartRun()
   }
 
   ++mRunCount;
-  if( mInterpretMode_ == InterpretModes::Free ) {
+  if( mInterpretMode_ == InterpretModes::Free )
+  {
     AppLog << "Start of run " << mRunCount << " in online (free) mode\n";
     mSummaryFile << "*** START OF RUN " << mRunCount << " IN ONLINE MODE ***\n";
-
   }
   else
   {
@@ -479,7 +456,6 @@ P3SpellerTask::OnStartRun()
                  << MenuCols( i ) << '\n';
 
   mSelectionSummary.str() = "Selections in this run:\n";
-
 }
 
 void
@@ -488,7 +464,7 @@ P3SpellerTask::OnStopRun()
   if( mInterpretMode_ == InterpretModes::Free )
     Parameter( "TextResult" ) = mTextHistory.top();
 
-  DisplayMessage( LocalizableString( "GOOD GAME !!!" ) );
+  DisplayMessage( LocalizableString( "TIME OUT !!!" ) );
 
   // App log
   AppLog << "******************************" << endl;
@@ -510,15 +486,12 @@ void
 P3SpellerTask::OnPreSequence()
 {
   DisplayMessage( "" );
-
 }
 
 void
 P3SpellerTask::DoPreSequence( const GenericSignal&, bool& /*doProgress*/ )
 {
   CheckSwitchMenu();
-
-
 }
 
 void
@@ -527,99 +500,8 @@ P3SpellerTask::OnSequenceBegin()
   State( "SelectedRow" ) = 0;
   State( "SelectedColumn" ) = 0;
   State( "SelectedTarget" ) = 0;
-
-	// set the number of sequences for this round
-    //mNumberOfSequences = mOrigNumberOfSequences + 5 - (rand() % 10);
-
-  // game mode is overriding free
-    if( mInterpretMode_ == InterpretModes::Free ) {
-		if (mFirstSequence) {
-			// load initial card values into mAsocFile
-						   for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
-			  {
-				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
-				if (ims != NULL) {
-					// as we clear each card, store the associated image file indexed by it's tag
-
-							mAsocFile[ims->Tag()].Tag = 0;
-							mAsocFile[ims->Tag()].Ran = false;
-							mAsocFile[ims->Tag()].Name = ims->File();
-				}
-			   }
-	//randomize the cards each run
-		for( int i = 1; i < 90; ++i )	  {
-			    // if we haven't randomized this node yet
-				if (mAsocFile[i].Name != "") {
-					// we're iterating through again, while all the cards are turned, to randomize the cards
-
-							if (mAsocFile[i].Ran == false) 
-							{
-								int max = mNumMatrixRows * mNumMatrixCols;
-								int attempts = 0;
-								while (mAsocFile[i].Ran == false) {
-									attempts++;
-									int rnd = rand( ) % max+1;
-									if (mAsocFile[rnd].Name != "") {
-										if (mAsocFile[rnd].Ran == false) {
-											AsocFile tmpAsoc;
-											tmpAsoc.Name = mAsocFile[i].Name;
-											tmpAsoc.Tag = mAsocFile[i].Tag;
-											tmpAsoc.Ran = mAsocFile[i].Ran;
-											mAsocFile[i].Name = mAsocFile[rnd].Name;
-											mAsocFile[i].Tag = mAsocFile[rnd].Tag;
-											mAsocFile[i].Ran = true;
-											mAsocFile[rnd].Name = tmpAsoc.Name;
-											mAsocFile[rnd].Tag = tmpAsoc.Tag;
-											mAsocFile[rnd].Ran = true;
-											break;
-										}
-									}
-									if (attempts > (max*2)) {
-										break;
-									}
-								}
-							}
-				}
-				
-		}
-		// put them back into their correct order now
-					   for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
-			  {
-				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
-				if (ims != NULL) {
-							ims->SetFile( mAsocFile[ims->Tag()].Name );
-							
-				}
-			   }
-		}
-		if (!mFirstSequence && (mFirstMatch==-1)) {
-			//OnPause();
-			//Sleep(10000);
-			//DisplayMessage("");
-			//OnPause();
-			// set mFirstMatch to 0 to indicate that the deck is cleared
-			mFirstMatch = 0;
-			   for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
-			  {
-				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
-				if (ims != NULL) {
-					// as we clear each card, store the associated image file indexed by it's tag
-
-							mAsocFile[ims->Tag()].Tag = 0;
-							mAsocFile[ims->Tag()].Ran = false;
-							mAsocFile[ims->Tag()].Name = ims->File();
-							ims->SetFile( "images\\redback.gif" );
-							ims->SetDimFactor(2);
-				}
-			   }
-		}
-	}
 }
-//void
-//P3SpellerTask::DoPreRun( const GenericSignal&, bool& /*doProgress*/ )
-//{
 
-//}
 void
 P3SpellerTask::OnPostRun()
 {
@@ -628,12 +510,6 @@ P3SpellerTask::OnPostRun()
   State( "SelectedTarget" ) = 0;
 }
 
-void
-P3SpellerTask::OnStimulusBegin( int inStimulusCode )
-{
-  Associations()[ inStimulusCode ].Present();
-  mStreamOutlet.push_sample(&mMarker);
-}
 int
 P3SpellerTask::OnNextStimulusCode()
 {
@@ -675,8 +551,6 @@ P3SpellerTask::OnNextStimulusCode()
       result = *mSequencePos++;
     }
   }
-
-
   return result;
 }
 
@@ -689,19 +563,6 @@ P3SpellerTask::DoPostSequence( const GenericSignal&, bool& /*doProgress*/ )
 Target*
 P3SpellerTask::OnClassResult( const ClassResult& inResult )
 {
-
-	// if we get a result back we're no longer on the first sequence (which is used for memorization time)
-	if (mFirstSequence) {
-		mFirstSequence = false;
-		DisplayMessage("match!");
-		mFirstMatch = -1;
-		Target* pTarget = NULL;
-		return( pTarget );
-	}
-	else {
-
-
-
   // We override the standard ClassResult handler
   // - to additionally provide the SelectedTarget, SelectedRow, SelectedColumn
   //   states,
@@ -763,83 +624,7 @@ P3SpellerTask::OnClassResult( const ClassResult& inResult )
                 << setprecision( 2 ) << fixed << mean
                 << "\n";
   }
-
-  // variable to hold whether we need to flip everything back
-    bool fnd = false;
-  // if firstresult then flip card up appropriately
-  if (mFirstMatch == 0) {
-	  mFirstMatch = 1;
-    for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
-			  {
-				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
-				if (ims != NULL) {
-					// if the tags match, flip the card up
-					if (pTarget->Tag()==ims->Tag()) {
-						if (mAsocFile[ims->Tag()].Tag == 2) {
-							DisplayMessage("already matched!");
-							mFirstMatch = 0;
-						}
-						else {
-							ims->SetFile( mAsocFile[ims->Tag()].Name );
-							mAsocFile[ims->Tag()].Tag = 1;
-						}
-					}
-				}
-		}
-  }
-  else if (mFirstMatch == 1) {
-  mFirstMatch = 0;
-    for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
-			  {
-				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
-				if (ims != NULL) {
-					// if the tags match, flip the card up
-					if (pTarget->Tag()==ims->Tag()) {
-						if (mAsocFile[ims->Tag()].Tag == 2) {
-							DisplayMessage("already matched!");
-						}
-						else if (mAsocFile[ims->Tag()].Tag == 1) {
-							DisplayMessage("you just chose that!");
-							// will depend on unflip loop at end to do this
-							//ims->SetFile( "images\\redback.gif" );
-							//mAsocFile[ims->Tag()].Tag = 0;
-						}
-						else {
-							for (int j=1;j<90;j++) {
-								if (mAsocFile[j].Name == mAsocFile[ims->Tag()].Name) {
-									if (mAsocFile[j].Tag == 1) {
-										DisplayMessage("Good match!");
-										ims->SetFile( mAsocFile[ims->Tag()].Name );
-										mAsocFile[ims->Tag()].Tag = 2;
-										mAsocFile[j].Tag = 2;
-										fnd = true;
-									}
-								}
-							}
-						}
-						// found our match, break out of iterator
-						break;
-					}
-				}
-	}
-// flip all cards that aren't already matched back over, set any 1's in the mAsocFile back to zero
-    int cardup = 0;
-	for( SetOfStimuli::const_iterator i = mStimuli.begin(); i != mStimuli.end(); ++i )
-			  {
-				ImageStimulus* ims = dynamic_cast<ImageStimulus*>( *i );
-				if (ims != NULL) {
-					if (mAsocFile[ims->Tag()].Tag == 1) {
-						ims->SetFile( "images\\redback.gif" );
-						mAsocFile[ims->Tag()].Tag = 0;
-					}
-					if (mAsocFile[ims->Tag()].Tag == 0) cardup++;
-				}
-	}
-	if (cardup<2) StimulusTask::StopRun();
-
-  }
   return pTarget;
-	}
 }
 
 // Speller events.
@@ -1229,8 +1014,7 @@ P3SpellerTask::LoadMenu( int                inMenuIdx,
   float iconHighlightFactor = MenuParam( "IconHighlightFactor", inMenuIdx );
   int numMenus = NumMenus(),
       numMatrixRows = MenuRows( inMenuIdx ),
-      numMatrixCols = MenuCols( inMenuIdx ),
-	  IconTag = 1;
+      numMatrixCols = MenuCols( inMenuIdx );
 
   ParamRef TargetDefinitions = MultipleMenus() ?
                                 Parameter( "TargetDefinitions" )( inMenuIdx, 0 ) :
@@ -1265,13 +1049,8 @@ P3SpellerTask::LoadMenu( int                inMenuIdx,
   {
     int targetCol = i % numMatrixCols,
         targetRow = i / numMatrixCols;
-//failed, just on diagonals: int targetCol = i, targetRow = i;
-
-  /*  Association& rowSet = ioAssociations[ targetRow + 1 ],
-               & colSet = ioAssociations[ numMatrixRows + targetCol + 1 ]; */
- Association& rowSet = ioAssociations[ i + 1 ],
-               & colSet = ioAssociations[ i + 1 ];
-
+    Association& rowSet = ioAssociations[ targetRow + 1 ],
+               & colSet = ioAssociations[ numMatrixRows + targetCol + 1 ];
 
     string entryText = TargetDefinitions( i, Enter );
     { // Check for legal entry text
@@ -1328,8 +1107,6 @@ P3SpellerTask::LoadMenu( int                inMenuIdx,
               .SetObjectRect( targetRect );
         pIcon->SetPresentationMode( VisualStimulus::Mode( iconHighlightMode ) )
               .SetDimFactor( 1.0 / iconHighlightFactor );
-		pIcon->SetTag( IconTag );
-		IconTag++;
         ioStimuli.insert( pIcon );
         rowSet.Add( pIcon );
         colSet.Add( pIcon );
@@ -1372,7 +1149,6 @@ P3SpellerTask::LoadMenu( int                inMenuIdx,
       ioAssociations[ numMatrixRows + col ].Add( pStimulus );
     }
   }
-
 }
 
 bool
